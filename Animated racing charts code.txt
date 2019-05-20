@@ -1,0 +1,90 @@
+#I wanted to build a snappy visualization to show my client how their ecommerse category investments have 
+#diversified over the n months to show I am capturing market demands, as trends sway. Months have been masked with numbers so as to conceal my clients investment trends.
+
+
+
+
+
+#Packages and libraries necessary for R visualization
+install.packages("janitor")
+install.packages("tidyverse")
+install.packages("dplyr")
+install.packages("magrittr")
+install.packages("scales")
+install.packages("gifski")
+install.packages("png")
+library(magrittr)
+library(dplyr)
+library(scales)
+library(tidyverse)
+library(janitor)
+library(tidyverse)
+library(gganimate)
+library(gifski)
+install.packages(default_renderer)
+
+#Read in data to ensure right format
+mydata <- read.csv("newchart1.csv")
+head(mydata, n=5)
+
+
+
+
+
+#Filter dataset to retain top 6 categories by investment
+mydata_formatted <- mydata %>%
+  group_by(Date) %>%
+  mutate(rank = rank(-Cost),
+         Value_rel = Cost/Cost[rank==1],
+         Value_lbl = paste0(" ",round(Cost))) %>%
+  group_by(Category) %>% 
+  filter(rank <=6) %>%
+  ungroup()
+
+head(mydata_formatted, n=5)
+
+
+#Barcharts to be incorporated in visualization
+staticplot = ggplot(mydata_formatted, aes(rank, group = Category, 
+                                          fill = as.factor(Category), color = as.factor(Category))) +
+  geom_tile(aes(y = Cost/2,
+                height = Cost,
+                width = 0.9), alpha = 0.8, color = NA) +
+  geom_text(aes(y = 0, label = paste(Category, " ")), vjust = 0.2, hjust = 1) +
+  geom_text(aes(y=Cost,label = Cost, hjust=0)) +
+  coord_flip(clip = "off", expand = FALSE) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_reverse() +
+  guides(color = FALSE, fill = FALSE) +
+  theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x = element_line( size=.1, color="grey" ),
+        panel.grid.minor.x = element_line( size=.1, color="grey" ),
+        plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey", vjust=-1),
+        plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
+        plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
+        plot.background=element_blank(),
+        plot.margin = margin(2,2, 2, 4, "cm"))
+
+
+
+
+#transition states stitches the individual static plots together by Month. View follow is used to give a view as if the background lines (gridlines) are moving as the animation is progressing
+anim = staticplot + transition_states(Date, transition_length = 30, state_length = 200) +
+  view_follow(fixed_x = TRUE)  +
+  labs(title = 'Monthly Cost : {closest_state}',  
+       subtitle  =  "Top 6 Categories",
+       caption  = "Cost taken from SA360")
+
+
+animate(anim, 400, fps = 20,  width = 1200, height = 1000, 
+        renderer = gifski_renderer("gganim.gif"))
